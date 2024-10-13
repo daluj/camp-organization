@@ -1,0 +1,48 @@
+services:
+  database:
+    image: postgis/postgis:latest
+    container_name: database
+    environment:
+      POSTGRES_DB: '${DB_DATABASE}'
+      POSTGRES_USER: '${DB_USER}'
+      POSTGRES_PASSWORD: '${DB_PASSWORD}'
+    volumes:
+      - ./database/database-schema.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - 5432:5432
+    network_mode: host
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  directus:
+    image: directus/directus:latest
+    container_name: directus
+    depends_on:
+      database:
+        condition: service_healthy  # Wait until the database is healthy
+    volumes:
+      - ./directus/database:/directus/database
+      - ./directus/uploads:/directus/uploads
+      - ./directus/extensions:/directus/extensions
+    ports:
+      - 8055:8055
+    environment:
+      KEY: "${DIRECTUS_KEY}"
+      SECRET: "${DIRECTUS_SECRET}"
+
+      DB_CLIENT: "pg"
+      DB_HOST: "${DB_HOST}"
+      DB_PORT: "${DB_PORT}"
+      DB_DATABASE: "${DB_DATABASE}"
+      DB_USER: "${DB_USER}"
+      DB_PASSWORD: "${DB_PASSWORD}"
+
+      ADMIN_EMAIL: "${ADMIN_EMAIL}"
+      ADMIN_PASSWORD: "${ADMIN_PASSWORD}"
+
+      WEBSOCKETS_ENABLED: true
+    
+    network_mode: host
